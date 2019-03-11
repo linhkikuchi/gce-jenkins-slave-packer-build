@@ -1,0 +1,25 @@
+---
+- name: upgrade all packages
+  yum: name=* state=latest
+
+- name: Disable SELinux
+  selinux: state=disabled
+  tags:
+  - setup
+
+- name: Set Timezone
+  command: cp -f /usr/share/zoneinfo/Pacific/Auckland /etc/localtime
+  tags:
+  - setup
+
+- name: Install java packages
+  yum: 
+    name: "{{ item }}"
+  with_items:
+    - java
+    - curl
+    - git
+    - wget
+    - jq
+  tags:
+  - setup

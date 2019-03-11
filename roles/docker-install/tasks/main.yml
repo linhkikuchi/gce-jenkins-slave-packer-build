@@ -1,0 +1,120 @@
+---
+
+- import_tasks: setup.yml
+
+
+- name: disable firewalld
+  service: name=firewalld enabled=no state=stopped
+
+# follow instruction from offical docker website https://docs.docker.com/engine/installation/linux/centos/
+- name: remove unofficial Docker packages
+  yum: name={{item}} state=absent
+  with_items:
+    - docker
+    - docker-common
+    - docker-selinux
+    - docker-engine
+  tags:
+    - setup
+    - docker-ce
+
+# install required packages
+- name: remove unofficial Docker packages
+  yum: name={{item}} state=present
+  with_items:
+    - yum-utils
+    - device-mapper-persistent-data
+    - lvm2
+  tags:
+    - setup
+    - docker-ce
+
+# add docker.repo
+- name: add docker.repo
+  template:
+    src: docker-ce.repo.j2
+    dest: /etc/yum.repos.d/docker-ce.repo
+  tags:
+    - setup
+    - docker-ce
+    - docker-ce-repo
+
+- name: install docker
+  yum: name=docker-ce state=present
+  tags:
+    - setup
+    - docker-ce
+    - docker-ce-repo
+
+- name: install python-pip to install docker-py
+  yum: name=python-pip state=latest
+  tags:
+    - setup
+    - docker-ce
+
+- name: install docker-py
+  pip:
+    name: docker-py
+    state: present
+  tags:
+    - setup
+    - docker-py
+
+- name: disable auto update docker after installation
+  command: yum-config-manager --disable docker-ce-stable
+  tags:
+    - setup
+    - docker-ce
+
+- name: disable auto update docker after installation
+  command: sed -i '/distroverpkg=centos-release/a exclude=docker*' /etc/yum.conf
+  tags:
+    - setup
+    - docker-ce
+
+- name: add tsl config to docker daemon
+  lineinfile:
+    backrefs: yes
+    dest: "/usr/lib/systemd/system/docker.service"
+    regexp: '^ExecStart=/usr/bin/dockerd'
+    line: 'ExecStart=/usr/bin/dockerd  -H unix://var/run/docker.sock -H tcp://0.0.0.0:2375'
+    state: present
+
+
+- name: reload docker daemon
+  command: systemctl daemon-reload
+
+- name: restart docker service
+  service:
+    name: docker
+    enabled: yes
+    state: restarted
+
+- name: Add the user 'jenkins'
+  user:
+    name: jenkins
+    shell: /bin/bash
+    groups: docker
+    append: yes
+
+- name: Create docker config dir
+  file:
+    path: /home/jenkins/.docker
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: 0644
+
+- name: update docker.sock permission
+  file:
+    path: /var/run/docker.sock
+    state: file
+    owner: jenkins
+    group: root
+    mode: 0644
+
+- name: Transfer docker config.json
+  copy: src=config.json dest=/home/jenkins/.docker/ owner=jenkins group=jenkins mode=0777
+
+- name: Transfer the slave.jar
+  copy: src=slave.jar dest=/home/jenkins/  owner=jenkins group=jenkins mode=0777

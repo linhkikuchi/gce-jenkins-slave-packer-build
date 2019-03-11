@@ -1,0 +1,24 @@
+{
+  "builders": [
+    {
+      "type": "googlecompute",
+      "project_id": "darkblue-networking",
+      "machine_type": "n1-standard-1",
+      "source_image_family": "centos-7",
+      "source_image_project_id": "centos-cloud",
+      "zone": "us-central1-a",
+      "disk_size": "20",
+      "preemptible": true,
+      "image_name": "jenkins-slave-{{timestamp}}",
+      "image_family": "jenkins-slave",
+      "ssh_username": "packer",
+      "account_file": "myproject.json"
+    }
+  ],
+  "provisioners": [
+    {
+        "type": "ansible",
+        "playbook_file": "docker.yaml"
+    }
+  ]
+}
